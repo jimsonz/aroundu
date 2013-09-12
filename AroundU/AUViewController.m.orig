@@ -1,0 +1,177 @@
+//
+//  AUViewController.m
+//  AroundU
+//
+//  Created by Peter Yeung on 2013-08-03.
+//  Copyright (c) 2013 Peter Yeung. All rights reserved.
+//
+
+#import "AUViewController.h"
+#import "AUAppDelegate.h"
+#import <FacebookSDK/FacebookSDK.h>
+
+@interface AUViewController () <UITableViewDataSource,UITableViewDelegate>
+
+@property (strong, nonatomic) IBOutlet FBProfilePictureView *userProfileImage;
+@property (strong, nonatomic) IBOutlet UILabel *userNameLabel;
+
+@end
+
+@implementation AUViewController
+
+- (void)viewDidLoad
+{
+    [super viewDidLoad];
+	// Do any additional setup after loading the view, typically from a nib.
+    
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc]
+                                              initWithTitle:@"Logout"
+                                              style:UIBarButtonItemStyleBordered
+                                              target:self
+                                              action:@selector(logoutButtonWasPressed:)];
+    
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(sessionStateChanged:)
+                                                 name:AUSessionStateChangedNotification
+                                               object:nil];
+}
+
+- (void)viewDidUnload
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+    
+    self.title = @"Friends Near By";
+}
+
+- (void)didReceiveMemoryWarning
+{
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
+}
+
+- (void)viewWillAppear:(BOOL)animated
+{
+    [super viewWillAppear:animated];
+    
+    if (FBSession.activeSession.isOpen) {
+        [self populateUserDetails];
+    }
+}
+
+-(void)logoutButtonWasPressed:(id)sender {
+    [FBSession.activeSession closeAndClearTokenInformation];
+}
+
+- (void)populateUserDetails
+{
+    if (FBSession.activeSession.isOpen) {
+        [[FBRequest requestForMe] startWithCompletionHandler:^(FBRequestConnection *connection,
+                                                               NSDictionary<FBGraphUser> *user,
+                                                               NSError *error) {
+            if (!error) {
+                self.userNameLabel.text = user.name;
+                self.userProfileImage.profileID = user.id;
+            }
+        }];
+    }
+}
+
+- (void)sessionStateChanged:(NSNotification*)notification
+{
+    [self populateUserDetails];
+}
+
+#pragma mark - Tableview Datasource
+
+- (UITableViewCell *)tableView:(UITableView *)tableView
+         cellForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    static NSString *CellIdentifier = @"Cell";
+    
+    UITableViewCell *cell = (UITableViewCell*)[tableView
+                                               dequeueReusableCellWithIdentifier:CellIdentifier];
+    if (cell == nil) {
+        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle
+                                      reuseIdentifier:CellIdentifier];
+        cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+        cell.selectionStyle = UITableViewCellSelectionStyleNone;
+        
+        cell.textLabel.font = [UIFont systemFontOfSize:16];
+        cell.textLabel.backgroundColor = [UIColor colorWithWhite:0 alpha:0];
+        cell.textLabel.lineBreakMode = UILineBreakModeTailTruncation;
+        cell.textLabel.clipsToBounds = YES;
+        
+        cell.detailTextLabel.font = [UIFont systemFontOfSize:12];
+        cell.detailTextLabel.backgroundColor = [UIColor colorWithWhite:0 alpha:0];
+        cell.detailTextLabel.textColor = [UIColor colorWithRed:0.4
+                                                         green:0.6
+                                                          blue:0.8
+                                                         alpha:1];
+        cell.detailTextLabel.lineBreakMode = UILineBreakModeTailTruncation;
+        cell.detailTextLabel.clipsToBounds = YES;
+    }
+    
+    switch (indexPath.row) {
+        case 0:
+            cell.textLabel.text = @"What are you eating?";
+            cell.detailTextLabel.text = @"Select one";
+            cell.imageView.image = [UIImage imageNamed:@"action-eating.png"];
+            break;
+            
+        case 1:
+            cell.textLabel.text = @"Where are you?";
+            cell.detailTextLabel.text = @"Select one";
+            cell.imageView.image = [UIImage imageNamed:@"action-location.png"];
+            break;
+            
+        case 2:
+            cell.textLabel.text = @"With whom?";
+            cell.detailTextLabel.text = @"Select friends";
+            cell.imageView.image = [UIImage imageNamed:@"action-people.png"];
+            break;
+            
+        case 3:
+            cell.textLabel.text = @"Got a picture?";
+            cell.detailTextLabel.text = @"Take one";
+            cell.imageView.image = [UIImage imageNamed:@"action-photo.png"];
+            break;
+            
+        default:
+            break;
+    }
+    
+    return cell;
+}
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
+{
+    //specify number of rows in a table since we only have 1 section so we don't need to specify that
+    return 4;
+}
+
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
+{
+    //specify how many sections there are
+    return 1;
+}
+
+#pragma mark - Tableview Delegate
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    switch (indexPath.row) {
+        case 2:
+            if (!self.friendPickerController) {
+                self.friendPickerController = [[FBFriendPickerViewController alloc]
+                                               initWithNibName:nil bundle:nil];
+                self.friendPickerController.title = @"Select friends";
+            }
+            
+            [self.friendPickerController loadData];
+            [self.navigationController pushViewController:self.friendPickerController
+                                                 animated:true];
+    }
+}
+
+
+@end
